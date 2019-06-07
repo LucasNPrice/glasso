@@ -37,15 +37,14 @@ class FGLasso():
         self.__updateSigma(j = j)
         
       iteration_error.append(self.__getNormError(last_sigma = last_sigma))
-
       print('Iteration {} Error: {}'.format(iteration, iteration_error[-1]))
       print('Iteration {} Time: {}'.format(iteration, time.time() - iter_start_time))
-
       iteration += 1
-      # sys.exit()
-      # iteration_error.append(0.000001)
 
     print('Time to Convergence: {}'.format(time.time() - fglasso_start_time))
+    edges = self.getEdges(blocked_matrix = self.Theta)
+    
+    return(edges)
 
   def __updateTheta_Inv(self, j):
 
@@ -138,6 +137,17 @@ class FGLasso():
     iter_difference = unblock_new_sigma - unblock_last_sigma
     fNorm = np.linalg.norm(iter_difference, ord = 'fro')
     return(fNorm)
+
+  def getEdges(self, blocked_matrix):
+
+    edges = np.zeros((self.p,self.p))
+    for rowblock in range(0,self.p):
+      for colblock in range(0,self.p):
+        if np.all(self.Theta[rowblock,colblock] == 0):
+          edges[rowblock,colblock] = 0
+        else:
+          edges[rowblock,colblock] = 1
+    return(edges)
    
 
 
