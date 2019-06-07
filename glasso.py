@@ -4,6 +4,8 @@ import numpy as np
 import time
 import multiprocessing as mp
 import sys
+from scipy.optimize import fsolve
+# from scipy.optimize import root   
 
 class FGLasso():
 
@@ -20,7 +22,6 @@ class FGLasso():
   def fglasso(self, gamma, epsilon):
 
     fglasso_start_time = time.time()
-
     norm_error = [epsilon+100]
     iteration = 1
 
@@ -72,16 +73,30 @@ class FGLasso():
             w_block = np.delete(self.Theta, obj = j, axis = 0)[l,j]
             inner_mult = np.matmul(theta_nj_transpose[l,k], w_block)
             block_residual += np.matmul(inner_mult, self.CorMat[j,j])
+
         fNorm = np.linalg.norm(block_residual, ord = 'fro')
+        wj = self.Theta[0:self.p-1,j]
+
         if fNorm <= gamma:
           # set theta block to 0
-          pass
+          wj[k] = np.zeros(self.M)
         else:
           # solve system of equations for theta block
-          pass
-      # error.append(error[-1]-50)
+          wj[k] = fsolve(self.__wjk, x0 = np.identity(self.M), 
+            args = (theta_nj, block_residual, gamma, j, k))
 
+      iter_j = np.delete(np.arange(0,self.p,1), obj = j)
+      self.Theta[iter_j,j] = wj
+      update_diff = np.reshape(self.Theta[iter_j,j],(49*5,5)) - np.reshape(last_w,(49*5,5))
+      error.append(np.linalg.norm(update_diff, ord = 'fro'))
+      iteration += 1
 
+  def __wjk(self, x, theta_nj, block_residual, gamma, j, k):
+    w = np.reshape(x, (self.M, self.M))
+    kron_prod = np.kron(theta_nj[k,k], self.CorMat[j,j])
+    wj = np.matmul(kron_prod, w.flatten()) + block_residual.flatten() + (
+      gamma * (w.flatten() / np.linalg.norm(w, ord = 'fro')))
+    return(wj)
 
 
 
