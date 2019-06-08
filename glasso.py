@@ -5,6 +5,7 @@ import time
 import multiprocessing as mp
 import sys
 from scipy.optimize import fsolve
+from sklearn.metrics import confusion_matrix
 
 class FGLasso():
 
@@ -148,7 +149,15 @@ class FGLasso():
         else:
           edges[rowblock,colblock] = 1
     return(edges)
-   
+
+  def getErrors(estEdges, actEdges):
+
+    tn, fp, fn, tp = confusion_matrix(
+      actEdges.flatten(), 
+      estEdges.flatten()).ravel()
+    tpr = tp / (tp + fn)
+    fpr = fp / (fp + tn)
+    return((tpr,fpr))
 
 
 
