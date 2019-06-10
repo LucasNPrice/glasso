@@ -121,15 +121,16 @@ class FGLasso():
     self.Sigma[j,j] = self.CorMat[j,j]
     iter_j = np.delete(np.arange(0,self.p,1), obj = j)
 
-    for block in enumerate(iter_j):
-      self.Sigma[block[1],j] = -1*(np.matmul(Uj[block[0]],self.CorMat[j,j]))
-      self.Sigma[j,block[1]] = np.transpose(self.Sigma[block[1],j], (1,0))
+    for b_iter, block in enumerate(iter_j):
+      self.Sigma[block,j] = -1*(np.matmul(Uj[b_iter],self.CorMat[j,j]))
+      self.Sigma[j,block] = np.transpose(self.Sigma[block,j], (1,0))
+    
 
-    for rowblock in enumerate(iter_j):
-      for colblock in enumerate(iter_j):
-        inner_matmul = np.matmul(Uj[rowblock[0]], self.CorMat[j,j])
-        self.Sigma[rowblock[1],colblock[1]] = self.Theta_inv[rowblock[1],colblock[1]] + (
-          np.matmul(inner_matmul, Uj_transpose[colblock[0]]))
+    for row_iter, rowblock in enumerate(iter_j):
+      for col_iter, colblock in enumerate(iter_j):
+        inner_matmul = np.matmul(Uj[row_iter], self.CorMat[j,j])
+        self.Sigma[rowblock,colblock] = self.Theta_inv[rowblock,colblock] + (
+          np.matmul(inner_matmul, Uj_transpose[col_iter]))
 
   def __getNormError(self, last_sigma):
 
