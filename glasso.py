@@ -2,10 +2,10 @@
 import block as bk
 import numpy as np
 import time
-import multiprocessing as mp
-import sys
 from scipy.optimize import fsolve
 from sklearn.metrics import confusion_matrix
+import multiprocessing as mp
+import sys
 
 class FGLasso():
 
@@ -33,9 +33,10 @@ class FGLasso():
       for j in range(0,len(self.Sigma)):
 
         print("function j =", j)
+        iter_j = np.delete(np.arange(0,self.p,1), obj = j)
         self.__updateTheta_Inv(j = j) # UpdateTheta in R
-        self.__updateTheta(j = j, gamma = gamma, epsilon = epsilon) # Algorithm_3 in R
-        self.__updateSigma(j = j)
+        self.__updateTheta(j = j, gamma = gamma, epsilon = epsilon, iter_j = iter_j) # Algorithm_3 in R
+        self.__updateSigma(j = j, iter_j = iter_j)
         
       iteration_error.append(self.__getNormError(last_sigma = last_sigma))
       print('Iteration {} Error: {}'.format(iteration, iteration_error[-1]))
@@ -60,7 +61,7 @@ class FGLasso():
             inner_matmul = np.matmul(self.Sigma[rowblock,j], np.linalg.inv(self.Sigma[j,j]))
             self.Theta_inv[rowblock,colblock] = self.Sigma[rowblock,colblock] - np.matmul(inner_matmul, sig_small_transpose[colblock])
 
-  def __updateTheta(self, j, gamma, epsilon):
+  def __updateTheta(self, j, gamma, epsilon, iter_j):
 
     iteration = 1
     error = [epsilon+10**3]
@@ -79,6 +80,7 @@ class FGLasso():
             inner_mult = np.matmul(theta_inv_nj_transpose[l,k], w_block)
             block_residual += np.matmul(inner_mult, self.CorMat[j,j])
 
+        block_residual += self.CorMat[iter_j,j][k]
         fNorm = np.linalg.norm(block_residual, ord = 'fro')
         wj = self.Theta[0:self.p-1,j]
 
@@ -87,10 +89,10 @@ class FGLasso():
           wj[k] = np.zeros(self.M)
         else:
           # solve system of equations for theta block
-          wj[k] = fsolve(self.__wjk, x0 = np.identity(self.M), 
+          wjk = fsolve(self.__wjk, x0 = np.identity(self.M), 
             args = (theta_inv_nj, block_residual, gamma, j, k))
+          wj[k] = np.reshape(wjk, (self.M,self.M))
 
-      iter_j = np.delete(np.arange(0,self.p,1), obj = j)
       self.Theta[iter_j,j] = wj
       self.Theta[j,iter_j] = np.transpose(wj,(0,2,1))
       iter_difference = np.reshape(self.Theta[iter_j,j],(49*5,5)) - np.reshape(last_w,(49*5,5))
@@ -105,7 +107,7 @@ class FGLasso():
       gamma * (w.flatten() / np.linalg.norm(w, ord = 'fro')))
     return(wj)
 
-  def __updateSigma(self, j):
+  def __updateSigma(self, j, iter_j):
 
     innerblock = np.zeros((self.M,self.M))
     Uj = np.reshape(np.repeat(innerblock, self.p-1), (49,5,5))
@@ -119,7 +121,6 @@ class FGLasso():
 
     Uj_transpose = np.transpose(Uj, (0,2,1))
     self.Sigma[j,j] = self.CorMat[j,j]
-    iter_j = np.delete(np.arange(0,self.p,1), obj = j)
 
     for b_iter, block in enumerate(iter_j):
       self.Sigma[block,j] = -1*(np.matmul(Uj[b_iter],self.CorMat[j,j]))
@@ -158,7 +159,7 @@ class FGLasso():
       estEdges.flatten()).ravel()
     tpr = tp / (tp + fn)
     fpr = fp / (fp + tn)
-    return((tpr,fpr))
+    return((tpr,fpr), (tp,fp,tn,fn))
 
 
 
